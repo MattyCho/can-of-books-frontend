@@ -16,7 +16,7 @@ class Profile extends React.Component {
           method: 'get',
           headers: {'Authorization': `Bearer ${jwt}`},
           baseURL: 'http://localhost:3333',
-          url: '/auth-test' // Probably going to have to change this
+          url: '/auth-test'
         }
 
         axios(config)
