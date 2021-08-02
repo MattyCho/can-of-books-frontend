@@ -11,7 +11,6 @@ import Bookshelf from './BestBooks.js'
 class App extends React.Component {
 
   render() {
-    // console.log('app', this.props);
     return(
       <>
         <Router>
