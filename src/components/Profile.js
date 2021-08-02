@@ -15,7 +15,7 @@ class Profile extends React.Component {
         const config = {
           method: 'get',
           headers: {'Authorization': `Bearer ${jwt}`},
-          baseURL: 'http://localhost:3333',
+          baseURL: process.env.REACT_APP_SERVER,
           url: '/auth-test'
         }
 
