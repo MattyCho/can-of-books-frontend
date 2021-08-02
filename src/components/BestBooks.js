@@ -1,10 +1,12 @@
 import React from 'react';
+import { withAuth0 } from '@auth0/auth0-react';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import Carousel from 'react-bootstrap/Carousel';
 import '../css/BestBooks.css';
 import axios from 'axios';
 import Form from 'react-bootstrap/Form';
 import {Button} from 'react-bootstrap';
+
 
 class MyFavoriteBooks extends React.Component {
   constructor(props) {
@@ -16,29 +18,57 @@ class MyFavoriteBooks extends React.Component {
       bookName: '',
       bookDescription: '',
       bookStatus: '',
+      img: '',
     }
   }
 
   componentDidMount() {
-    axios.get('http://localhost:3001/books')
-      .then(books => {
-        this.setState({
-          booksArray: books.data,
-          email: books.data[0].email,
-        })
-        console.log('State = ', this.state.booksArray);
-      }
-    )
+    this.props.auth0.getIdTokenClaims()
+      .then(async res => {
+        const jwt = res.__raw;
+
+        const config = {
+          headers: {"authorization" : `Bearer ${jwt}`}, 
+          baseURL: process.env.REACT_APP_SERVER,
+          url: '/books',
+          params: { email: this.props.auth0.user.email },
+          method: 'get'
+        }
+        const books = await axios(config);
+
+        // const books = await axios.get('${http://localhost:3001}/books', {headers: {"authorization" : `Bearer ${jwt}`}})
+
+        this.setState({ booksArray: books.data });
+      })
+      .catch(err => console.error(err));
   }
 
-  addBook = (e) => {
-    e.preventDefault();
-    axios.post('http://localhost:3001/books', { email: this.state.email, books: [{ name: this.state.bookName, description: this.state.bookDescription, status: this.state.bookStatus}] })
-      .then(cat => {
-        // update to match my variables
-        console.log(cat.data.name);
-        this.setState({ cats: [...this.state.cats, {name: cat.data.name}] }) // rewatch this part of the lecture
-      })
+  addBook = () => {
+    this.props.auth0.getIdTokenClaims()
+    .then(async res => {
+      const jwt = res.__raw;
+
+      const config = {
+        headers: {"Authorization" : `Bearer ${jwt}`},
+        data: {
+          email: this.props.auth0.user.email,
+          name: this.state.bookName,
+          description: this.state.bookDescription,
+          status: this.state.bookStatus,
+          img: this.state.img,
+        },
+        baseURL: process.env.REACT_APP_SERVER,
+        url: '/books',
+        method: 'post'
+      }
+      
+      const bookResults = await axios(config);
+
+      // const bookResults = await axios.post('http://localhost:3001/books', {headers: {"authorization" : `Bearer ${jwt}`}})
+
+      this.props.updateBookArray(bookResults.data);
+    })
+    .catch(err => console.error(err));
   }
 
   updateBookName = (e) => {
@@ -55,10 +85,9 @@ class MyFavoriteBooks extends React.Component {
 
   deleteBook = (e, id) => {
     e.preventDefault();
-    axios.delete(`http://localhost:3001/books/${id}`)
+    axios.delete(`${process.env.REACT_APP_SERVER}/books/${id}`)
       .then(result => {
         console.log(result);
-        // in order to remove the cat from our list of cats, filter out the cat via it's id
       })
   }
 
@@ -66,7 +95,7 @@ class MyFavoriteBooks extends React.Component {
     return(
       <>
         <Carousel>
-          {this.state.booksArray.map((book, idx) => {
+          {this.state.booksArray > 1 && this.state.booksArray.map((book, idx) => {
             return (
               <Carousel.Item key={idx}>
                 <img
@@ -108,4 +137,4 @@ class MyFavoriteBooks extends React.Component {
   }
 }
 
-export default MyFavoriteBooks;
+export default withAuth0(MyFavoriteBooks);
