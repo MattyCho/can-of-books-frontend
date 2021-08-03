@@ -5,11 +5,9 @@ import {Card, ListGroup, ListGroupItem} from 'react-bootstrap'
 
 class Profile extends React.Component {
   componentDidMount() {
-    console.log(this.props.auth0.isAuthenticated);
     if(this.props.auth0.isAuthenticated) {
       this.props.auth0.getIdTokenClaims()
       .then(res => {
-        console.log(res);
         const jwt = res.__raw;
 
         const config = {
