@@ -6,6 +6,7 @@ import '../css/BestBooks.css';
 import axios from 'axios';
 import Form from 'react-bootstrap/Form';
 import {Button} from 'react-bootstrap';
+import Modal from 'react-bootstrap/Modal'
 
 
 class MyFavoriteBooks extends React.Component {
@@ -19,31 +20,36 @@ class MyFavoriteBooks extends React.Component {
       bookDescription: '',
       bookStatus: '',
       img: '',
+      showModal: false,
+      updateId: '',
     }
   }
 
   componentDidMount() {
-    this.props.auth0.getIdTokenClaims()
-      .then(async res => {
-        const jwt = res.__raw;
-
-        const config = {
-          headers: {"authorization" : `Bearer ${jwt}`}, 
-          baseURL: process.env.REACT_APP_SERVER,
-          url: '/books',
-          params: { email: this.props.auth0.user.email },
-          method: 'get'
-        }
-        const books = await axios(config);
-
-        // const books = await axios.get('${http://localhost:3001}/books', {headers: {"authorization" : `Bearer ${jwt}`}})
-
-        this.setState({ booksArray: books.data });
-      })
-      .catch(err => console.error(err));
+    this.getBooks();
   }
 
-  addBook = () => {
+  getBooks = () => {
+    this.props.auth0.getIdTokenClaims()
+    .then(async res => {
+      const jwt = res.__raw;
+
+      const config = {
+        headers: {"authorization" : `Bearer ${jwt}`}, 
+        baseURL: process.env.REACT_APP_SERVER,
+        url: '/books',
+        params: { email: this.props.auth0.user.email },
+        method: 'get'
+      }
+      const books = await axios(config);
+
+      this.setState({ booksArray: books.data });
+    })
+    .catch(err => console.error(err));
+  }
+
+  addBook = (e) => {
+    e.preventDefault();
     this.props.auth0.getIdTokenClaims()
     .then(async res => {
       const jwt = res.__raw;
@@ -64,38 +70,96 @@ class MyFavoriteBooks extends React.Component {
       
       const bookResults = await axios(config);
 
-      // const bookResults = await axios.post('http://localhost:3001/books', {headers: {"authorization" : `Bearer ${jwt}`}})
-
-      this.props.updateBookArray(bookResults.data);
+      this.setState({
+        booksArray: bookResults.data,
+      });
     })
     .catch(err => console.error(err));
   }
 
   updateBookName = (e) => {
-    this.setState({ name: e.target.value })
+    e.preventDefault();
+    this.setState({ bookName: e.target.value })
   }
 
   updateBookDescription = (e) => {
-    this.setState({ description: e.target.value })
+    e.preventDefault();
+    this.setState({ bookDescription: e.target.value })
   }
 
   updateBookStatus = (e) => {
-    this.setState({ status: e.target.value })
+    e.preventDefault();
+    this.setState({ bookStatus: e.target.value })
   }
 
-  deleteBook = (e, id) => {
-    e.preventDefault();
-    axios.delete(`${process.env.REACT_APP_SERVER}/books/${id}`)
-      .then(result => {
-        console.log(result);
-      })
+  deleteBook = (idx) => {
+    this.props.auth0.getIdTokenClaims()
+    .then(async res => {
+      const jwt = res.__raw;
+
+      const config = {
+        headers: {"Authorization" : `Bearer ${jwt}`},
+        params: {
+          email: this.props.auth0.user.email,
+          id: this.state.booksArray[idx]._id,
+        },
+        baseURL: process.env.REACT_APP_SERVER,
+        url: '/books',
+        method: 'delete'
+      }
+      
+      const bookResults = await axios(config);
+      this.setState({
+        booksArray: bookResults.data,
+      });
+    })
+    .catch(err => console.error(err));
   }
+
+  showModal = (idx) => {
+    this.setState({
+      showModal: true,
+      updateId: this.state.booksArray[idx]._id,
+    })
+  }
+
+  closeModal = () => {
+    this.setState({
+      showModal: false,
+    })
+  }
+
+  updateBook = (e) => {
+    this.props.auth0.getIdTokenClaims()
+    .then(async res => {
+      const jwt = res.__raw;
+
+      const config = {
+        headers: {"Authorization" : `Bearer ${jwt}`},
+        params: {
+          email: this.props.auth0.user.email,
+          id: this.state.updateId,
+          name: this.state.bookName,
+          description: this.state.bookDescription,
+          status: this.state.bookStatus,
+        },
+        baseURL: process.env.REACT_APP_SERVER,
+        url: '/books',
+        method: 'put'
+      }
+      
+      const bookResults = await axios(config);
+      this.setState({
+        booksArray: bookResults.data,
+      });
+    })
+    .catch(err => console.error(err));  }
 
   render() {
     return(
       <>
         <Carousel>
-          {this.state.booksArray > 1 && this.state.booksArray.map((book, idx) => {
+          {this.state.booksArray.map((book, idx) => {
             return (
               <Carousel.Item key={idx}>
                 <img
@@ -104,13 +168,43 @@ class MyFavoriteBooks extends React.Component {
                   alt="Book Cover"
                 />
                 <Carousel.Caption>
-                  <h3>{book.books[0].name}</h3>
-                  <p>{book.books[0].description}</p>
-                  <Button onClick={this.deleteBook}> Remove this book</Button>
+                  <h3>{book.name}</h3>
+                  <p>{book.description}</p>
+                  <Button onClick={() => this.showModal(idx)}>Update this book</Button>
+                  <Button onClick={() => this.deleteBook(idx)}>Remove this book</Button>
                 </Carousel.Caption>
               </Carousel.Item>
           )})}
         </Carousel>
+
+        <Modal show={this.state.showModal} onHide={this.closeModal}>
+          <Modal.Header closeButton>
+            <Modal.Title>Update Book</Modal.Title>
+          </Modal.Header>
+          <Modal.Body>
+            <Form onSubmit={this.updateBook}>
+              <Form.Group className="mb-3" controlId="formBookTitle">
+                <Form.Label>Book Title</Form.Label>
+                <Form.Control type="text" placeholder="Update book name" onChange={this.updateBookName}/>
+              </Form.Group>
+
+              <Form.Group className="mb-3" controlId="formBookDescription">
+                <Form.Label>Description</Form.Label>
+                <Form.Control type="text" placeholder="Update description" onChange={this.updateBookDescription}/>
+              </Form.Group>
+
+              <Form.Group className="mb-3" controlId="formBookStatus">
+                <Form.Label>Describe Status</Form.Label>
+                <Form.Control type="text" placeholder="Update Status" onChange={this.updateBookStatus}/>
+              </Form.Group>
+            </Form>
+          </Modal.Body>
+          <Modal.Footer>
+            <Button variant="primary" onClick={this.updateBook}>
+              Save Changes
+            </Button>
+          </Modal.Footer>
+        </Modal>
 
         <Form onSubmit={this.addBook}>
           <Form.Group className="mb-3" controlId="formBookTitle">
